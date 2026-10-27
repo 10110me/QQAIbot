@@ -1,0 +1,319 @@
+# Managed by python3 start.py; select mode in startup.ini.
+# Both modes share the same database and volumes. Do not merge other Compose files.
+name: osa-lowmem
+
+x-worker-env: &worker-env
+  OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Run python3 scripts/init_env.py first}
+  OSA_HEAVY_SLOT: ${OSA_PROFILE_HEAVY_SLOT:-}
+  OSA_HEAVY_WAIT_SECONDS: "180"
+  MALLOC_ARENA_MAX: "2"
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+
+x-worker: &worker
+  restart: unless-stopped
+  init: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: local
+    options: {max-size: 5m, max-file: "2"}
+
+services:
+  # This exits after provisioning a lock inode accessible to the trusted workers.
+  slots-init:
+    image: python:3.12-slim
+    network_mode: none
+    volumes: [slots:/slots]
+    command: [python, -c, "import pathlib,os; p=pathlib.Path('/slots/heavy.lock'); p.touch(exist_ok=True); os.chmod(p,0o666)"]
+    mem_limit: 32m
+    memswap_limit: 64m
+
+  app:
+    <<: *worker
+    build: .
+    env_file: .env
+    environment:
+      OSA_HOST: 0.0.0.0
+      OSA_DATABASE_URL: ${OSA_PROFILE_DATABASE_URL:-sqlite+aiosqlite:////app/data/osa.db}
+      OSA_AUTO_CREATE_SCHEMA: "false"
+      OSA_DATA_DIR: /app/data
+      OSA_GLOBAL_GROUP_MEMORY: ${OSA_GLOBAL_GROUP_MEMORY:-false}
+      OSA_DATABASE_POOL_SIZE: ${OSA_PROFILE_DB_POOL:-5}
+      OSA_WORKER_CONCURRENCY: ${OSA_PROFILE_WORKERS:-10}
+      OSA_TASK_CONCURRENCY: ${OSA_PROFILE_TASKS:-3}
+      OSA_MAX_CONTEXT_CHARS: ${OSA_PROFILE_CONTEXT:-20000}
+      OSA_MAX_DOWNLOAD_BYTES: ${OSA_PROFILE_DOWNLOAD:-20000000}
+      OSA_RESEARCH_ENABLED: "true"
+      OSA_DEEPSEEK_WEB_ENABLED: "true"
+      OSA_DEEPSEEK_TRIGGER: always
+      OSA_SEARCH_PROVIDER: none
+      OSA_BROWSER_WORKER_URL: http://browser-worker:8090
+      OSA_BROWSER_VNC_URL: http://browser-worker:6080
+      OSA_INDEXER_WORKER_URL: http://indexer-worker:8092
+      OSA_SCREENSHOT_WORKER_URL: http://screenshot-worker:8093
+      OSA_QQBOT_API_URL: ${OSA_QQBOT_API_URL:-}
+      OSA_QQBOT_TIMEOUT: ${OSA_QQBOT_TIMEOUT:-600}
+      OSA_QQBOT_TOOLS_CACHE_SECONDS: ${OSA_QQBOT_TOOLS_CACHE_SECONDS:-86400}
+      OSA_SANDBOX_WORKER_URL: http://sandbox-worker:8091
+      OSA_SANDBOX_ENABLED: ${OSA_PROFILE_SANDBOX:-false}
+      OSA_RETENTION_DAYS: ${OSA_RETENTION_DAYS:-30}
+      OSA_V2_ENABLED: "true"
+      OSA_V3_ENABLED: ${OSA_V3_ENABLED:-true}
+      OSA_CODING_PROVIDER: ${OSA_PROFILE_CODING:-builtin}
+      OSA_OPENCODE_ENDPOINT: ${OSA_OPENCODE_ENDPOINT:-http://opencode-gateway:8094/projects/{workspace_id}}
+      OSA_OPENCODE_PASSWORD: ${OSA_OPENCODE_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_OPENCODE_MANAGED_GATEWAY: ${OSA_OPENCODE_MANAGED_GATEWAY:-true}
+      OSA_CODEX_ENDPOINT: ${OSA_CODEX_ENDPOINT:-http://codex-gateway:8094/projects/{workspace_id}}
+      OSA_CODEX_PASSWORD: ${OSA_CODEX_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_CODEX_MANAGED_GATEWAY: ${OSA_CODEX_MANAGED_GATEWAY:-true}
+      OSA_THINKING_MAX_STEPS: ${OSA_PROFILE_THINK_STEPS:-12}
+      OSA_THINKING_MAX_SECONDS: ${OSA_PROFILE_THINK_SECONDS:-180}
+      OSA_V2_DATABASE_URL: ${OSA_PROFILE_V2_DATABASE_URL:-/app/control/registry.db}
+      OSA_WORKSPACE_DIR: /app/workspaces
+      OSA_WORK_ENABLED: ${OSA_PROFILE_WORK:-false}
+      OSA_RUNTIME_MODE: ${OSA_PROFILE_MODE:?Use python3 start.py to apply startup.ini}
+      MALLOC_ARENA_MAX: "2"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    ports: ["${OSA_BIND_ADDRESS:-127.0.0.1}:8080:8080"]
+    volumes: [appdata:/app/data, controldata:/app/control, workspaces:/app/workspaces]
+    networks: [edge, core, browser_net, indexer_net, screenshot_net, sandbox_net]
+    depends_on:
+      browser-worker: {condition: service_started}
+      indexer-worker: {condition: service_started}
+      screenshot-worker: {condition: service_started}
+    mem_limit: ${OSA_PROFILE_APP_MEMORY:-1536m}
+    memswap_limit: ${OSA_PROFILE_APP_SWAP:-2304m}
+    cpus: ${OSA_PROFILE_APP_CPUS:-2}
+    pids_limit: ${OSA_PROFILE_APP_PIDS:-128}
+
+  browser-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/browser/Dockerfile}
+    environment:
+      <<: *worker-env
+      BROWSER_LAZY: ${OSA_PROFILE_BROWSER_LAZY:-false}
+      BROWSER_IDLE_SECONDS: ${OSA_PROFILE_BROWSER_IDLE:-60}
+      DEEPSEEK_URL: https://chat.deepseek.com
+      DEEPSEEK_INPUT_SELECTOR: ${DEEPSEEK_INPUT_SELECTOR:-textarea, [contenteditable='true']}
+      DEEPSEEK_ANSWER_SELECTOR: ${DEEPSEEK_ANSWER_SELECTOR:-.ds-markdown}
+      DEEPSEEK_SEND_SELECTOR: ${DEEPSEEK_SEND_SELECTOR:-}
+      DEEPSEEK_NEW_CHAT_SELECTOR: ${DEEPSEEK_NEW_CHAT_SELECTOR:-}
+      DEEPSEEK_SEARCH_TOGGLE_SELECTOR: ${DEEPSEEK_SEARCH_TOGGLE_SELECTOR:-}
+      DEEPSEEK_SEARCH_ENABLED_SELECTOR: ${DEEPSEEK_SEARCH_ENABLED_SELECTOR:-}
+    volumes: [browserdata:/data, slots:/slots]
+    networks: [browser_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    shm_size: ${OSA_PROFILE_BROWSER_SHM:-512m}
+    mem_limit: ${OSA_PROFILE_BROWSER_MEMORY:-2g}
+    memswap_limit: ${OSA_PROFILE_BROWSER_SWAP:-4g}
+    cpus: ${OSA_PROFILE_BROWSER_CPUS:-2}
+    pids_limit: ${OSA_PROFILE_BROWSER_PIDS:-256}
+
+  indexer-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/indexer/Dockerfile}
+    environment:
+      <<: *worker-env
+      PARSER_MEMORY_MB: ${OSA_PROFILE_PARSER_MB:-768}
+    volumes: [slots:/slots]
+    networks: [indexer_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    read_only: true
+    tmpfs: ["/tmp:size=${OSA_PROFILE_INDEXER_TMPFS:-256m},noexec,nosuid"]
+    mem_limit: ${OSA_PROFILE_INDEXER_MEMORY:-1g}
+    memswap_limit: ${OSA_PROFILE_INDEXER_SWAP:-2g}
+    cpus: ${OSA_PROFILE_INDEXER_CPUS:-1}
+    pids_limit: ${OSA_PROFILE_INDEXER_PIDS:-64}
+
+  screenshot-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/browser/Screenshot.Dockerfile}
+    environment: *worker-env
+    volumes: [slots:/slots]
+    networks: [screenshot_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    read_only: true
+    tmpfs: ["/tmp:size=${OSA_PROFILE_SCREENSHOT_TMPFS:-256m},nosuid"]
+    shm_size: ${OSA_PROFILE_SCREENSHOT_SHM:-256m}
+    mem_limit: ${OSA_PROFILE_SCREENSHOT_MEMORY:-1g}
+    memswap_limit: ${OSA_PROFILE_SCREENSHOT_SWAP:-2g}
+    cpus: ${OSA_PROFILE_SCREENSHOT_CPUS:-1}
+    pids_limit: ${OSA_PROFILE_SCREENSHOT_PIDS:-192}
+
+  sandbox-worker:
+    # Privileged trusted controller; its untrusted children get neither socket nor lock.
+    profiles: [sandbox]
+    build: {context: ., dockerfile: workers/sandbox/Dockerfile}
+    environment:
+      <<: *worker-env
+      SANDBOX_DATA_DIR: /sandbox-data
+      SANDBOX_HOST_DATA_DIR: ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}
+      SANDBOX_IMAGE: osa-python-runner:0.2
+      SANDBOX_MEMORY: ${OSA_PROFILE_RUNNER_MEMORY:-256m}
+      SANDBOX_MEMORY_SWAP: ${OSA_PROFILE_RUNNER_SWAP:-512m}
+    volumes:
+      - slots:/slots
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}:/sandbox-data
+    networks: [sandbox_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    restart: unless-stopped
+    init: true
+    mem_limit: ${OSA_PROFILE_SANDBOX_MEMORY:-192m}
+    memswap_limit: ${OSA_PROFILE_SANDBOX_SWAP:-512m}
+    pids_limit: ${OSA_PROFILE_SANDBOX_PIDS:-64}
+    logging:
+      driver: local
+      options: {max-size: 5m, max-file: "2"}
+
+  postgres:
+    profiles: [postgres]
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: osa
+      POSTGRES_DB: osa
+      POSTGRES_PASSWORD: ${OSA_DB_PASSWORD:-not-used-when-sqlite}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [core]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osa -d osa"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 768m
+    cpus: 1
+    restart: unless-stopped
+    logging:
+      driver: local
+      options: {max-size: 5m, max-file: "2"}
+
+  work-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/work/Dockerfile}
+    environment:
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+      OSA_V2_DATABASE_URL: ${OSA_PROFILE_V2_DATABASE_URL:-/app/control/registry.db}
+      OSA_WORK_ENABLED: ${OSA_PROFILE_WORK:-false}
+      OSA_WORKSPACE_DIR: /app/workspaces
+      OSA_WORK_MODEL_GATEWAY_URL: http://app:8080
+      OSA_V3_ENABLED: ${OSA_V3_ENABLED:-true}
+      OSA_CODING_PROVIDER: ${OSA_PROFILE_CODING:-builtin}
+      OSA_OPENCODE_ENDPOINT: ${OSA_OPENCODE_ENDPOINT:-http://opencode-gateway:8094/projects/{workspace_id}}
+      OSA_OPENCODE_PASSWORD: ${OSA_OPENCODE_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_OPENCODE_MANAGED_GATEWAY: ${OSA_OPENCODE_MANAGED_GATEWAY:-true}
+      OSA_OPENCODE_USERNAME: ${OSA_OPENCODE_USERNAME:-opencode}
+      OSA_OPENCODE_VERSION: ${OSA_OPENCODE_VERSION:-1.2.27}
+      OSA_OPENCODE_ISOLATION_CONFIRMED: ${OSA_OPENCODE_ISOLATION_CONFIRMED:-false}
+      OSA_CODEX_ENDPOINT: ${OSA_CODEX_ENDPOINT:-http://codex-gateway:8094/projects/{workspace_id}}
+      OSA_CODEX_PASSWORD: ${OSA_CODEX_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_CODEX_MANAGED_GATEWAY: ${OSA_CODEX_MANAGED_GATEWAY:-true}
+      OSA_CODEX_USERNAME: ${OSA_CODEX_USERNAME:-codex}
+      OSA_CODEX_VERSION: ${OSA_CODEX_VERSION:-0.147.0}
+      OSA_CODEX_ISOLATION_CONFIRMED: ${OSA_CODEX_ISOLATION_CONFIRMED:-false}
+      OSA_WORK_MODEL_API_KEY: ${OSA_WORK_MODEL_API_KEY:-${OSA_MODEL_API_KEY:-}}
+      OSA_WORK_MODEL_BASE_URL: ${OSA_WORK_MODEL_BASE_URL:-${OSA_MODEL_BASE_URL:-https://api.openai.com/v1}}
+      OSA_WORK_MODEL: ${OSA_WORK_MODEL:-${OSA_CHAT_MODEL:-configured-work-model}}
+      OSA_WORK_MAX_TOKENS: ${OSA_WORK_MAX_TOKENS:-8192}
+      OSA_WORK_DAILY_MODEL_CALLS: ${OSA_WORK_DAILY_MODEL_CALLS:-0}
+      OSA_NIGHTLY_RESEARCH_LIMIT: ${OSA_NIGHTLY_RESEARCH_LIMIT:-20}
+      OSA_SANDBOX_WORKER_URL: http://sandbox-worker:8091
+      OSA_BROWSER_WORKER_URL: http://browser-worker:8090
+      MALLOC_ARENA_MAX: "2"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    volumes: [controldata:/app/control, workspaces:/app/workspaces]
+    networks: [core, work_net, browser_net, sandbox_net, opencode_net, codex_net]
+    mem_limit: 512m
+    memswap_limit: 1024m
+    cpus: 1
+    pids_limit: 96
+    depends_on:
+      sandbox-worker: {condition: service_started, required: false}
+      browser-worker: {condition: service_started}
+
+  opencode-gateway:
+    # Trusted controller only. It provisions one isolated specialist per workspace.
+    profiles: [opencode]
+    build: {context: ., dockerfile: workers/opencode/Dockerfile}
+    environment:
+      OSA_OPENCODE_MODEL_CONFIG_URL: http://app:8080/internal/opencode/model
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+      OSA_OPENCODE_SCOPE: ${COMPOSE_PROJECT_NAME}
+      OSA_OPENCODE_BACKUP_VOLUME: ${COMPOSE_PROJECT_NAME}_appdata
+      OSA_OPENCODE_NETWORK: ${COMPOSE_PROJECT_NAME}_opencode_net
+      OSA_OPENCODE_PASSWORD: ${OSA_OPENCODE_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_OPENCODE_USERNAME: ${OSA_OPENCODE_USERNAME:-opencode}
+      OSA_WORK_MODEL_API_KEY: ${OSA_WORK_MODEL_API_KEY:-${OSA_MODEL_API_KEY:-}}
+      OSA_WORK_MODEL_BASE_URL: ${OSA_WORK_MODEL_BASE_URL:-${OSA_MODEL_BASE_URL:-https://api.openai.com/v1}}
+      OSA_WORK_MODEL: ${OSA_WORK_MODEL:-${OSA_CHAT_MODEL:-configured-work-model}}
+      OSA_OPENCODE_MEMORY: ${OSA_PROFILE_OPENCODE_MEMORY:-768m}
+      OSA_OPENCODE_SWAP: ${OSA_PROFILE_OPENCODE_SWAP:-1536m}
+    volumes: [/var/run/docker.sock:/var/run/docker.sock]
+    networks: [opencode_net, core]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: local
+      options: {max-size: 5m, max-file: "2"}
+
+  codex-gateway:
+    profiles: [codex]
+    build: {context: ., dockerfile: workers/opencode/Dockerfile}
+    environment:
+      OSA_CODING_BACKEND: codex
+      OSA_CODEX_MODEL_CONFIG_URL: http://app:8080/internal/codex/model
+      OSA_CODEX_API_KEY: ${OSA_CODEX_API_KEY:-}
+      OSA_CODEX_BASE_URL: ${OSA_CODEX_BASE_URL:-https://api.openai.com/v1}
+      OSA_CODEX_MODEL: ${OSA_CODEX_MODEL:-}
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+      OSA_OPENCODE_SCOPE: ${COMPOSE_PROJECT_NAME}
+      OSA_OPENCODE_BACKUP_VOLUME: ${COMPOSE_PROJECT_NAME}_appdata
+      OSA_OPENCODE_NETWORK: ${COMPOSE_PROJECT_NAME}_codex_net
+      OSA_OPENCODE_PASSWORD: ${OSA_CODEX_PASSWORD:-${OSA_WORKER_TOKEN}}
+      OSA_OPENCODE_USERNAME: ${OSA_CODEX_USERNAME:-codex}
+      OSA_OPENCODE_MEMORY: ${OSA_PROFILE_CODEX_MEMORY:-1536m}
+      OSA_OPENCODE_SWAP: ${OSA_PROFILE_CODEX_SWAP:-2560m}
+    volumes: [/var/run/docker.sock:/var/run/docker.sock]
+    networks: [codex_net, core]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: local
+      options: {max-size: 5m, max-file: "2"}
+
+  backup-browser:
+    profiles: [backup]
+    image: python:3.12-slim
+    network_mode: none
+    volumes: [browserdata:/browser-profile:ro, appdata:/app/data]
+    command: [python, -c, "import os,tarfile,time,pathlib; os.umask(0o077); p=pathlib.Path('/app/data/backups'); p.mkdir(exist_ok=True); target=p/('browser-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+'.tar.gz'); archive=tarfile.open(target,'w:gz'); archive.add('/browser-profile',arcname='browser-profile'); archive.close(); print('Browser backup:',target.name)"]
+    mem_limit: 128m
+    cpus: 1
+
+volumes:
+  appdata:
+  controldata:
+  workspaces:
+  pgdata:
+  browserdata:
+  slots:
+networks:
+  core: {internal: true}
+  work_net: {}
+  edge: {}
+  browser_net: {}
+  screenshot_net: {}
+  indexer_net: {internal: true}
+  sandbox_net: {internal: true}
+  opencode_net: {}
+  codex_net: {}

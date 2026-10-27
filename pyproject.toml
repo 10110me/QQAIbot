@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tidetalk-agent"
+version = "0.4.0"
+description = "TideTalk (汐言): modular, permission-first QQ social agent framework"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1",
+  "sqlalchemy[asyncio]>=2.0.36,<3", "aiosqlite>=0.20,<1",
+  "asyncpg>=0.30,<1", "alembic>=1.14,<2",
+  "httpx>=0.28,<1", "pydantic-settings>=2.7,<3", "packaging>=24,<27",
+  "tzdata>=2024.2", "python-dotenv>=1,<2", "aiohttp>=3.11,<4", "python-multipart>=0.0.20,<1",
+  "psycopg[binary]>=3.2,<4", "pgvector>=0.3,<1", "boto3>=1.35,<2", "pypdf>=5,<7", "python-docx>=1.1,<2",
+  "beautifulsoup4>=4.12,<5", "Pillow>=11,<13", "playwright>=1.50,<2", "websockets>=14,<17",
+  "cryptography>=44,<47",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.9,<1", "mypy>=1.14,<2"]
+
+[project.scripts]
+osa = "osa.main:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/osa"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+

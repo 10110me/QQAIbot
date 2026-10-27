@@ -1,0 +1,124 @@
+# Start with: docker compose -f docker-compose.yml -f docker-compose.full.yml up --build -d
+services:
+  app:
+    networks: [core, browser_net, indexer_net, sandbox_net, screenshot_net, search_net]
+    environment:
+      OSA_DATA_DIR: /app/data
+      OSA_BROWSER_WORKER_URL: http://browser-worker:8090
+      OSA_BROWSER_VNC_URL: http://browser-worker:6080
+      OSA_INDEXER_WORKER_URL: http://indexer-worker:8092
+      OSA_SCREENSHOT_WORKER_URL: http://screenshot-worker:8093
+      OSA_SANDBOX_WORKER_URL: http://sandbox-worker:8091
+      OSA_SEARCH_BASE_URL: http://searxng:8080
+    volumes:
+      - appdata:/app/data
+    depends_on:
+      browser-worker:
+        condition: service_started
+      indexer-worker:
+        condition: service_started
+  postgres:
+    networks: [core]
+  browser-worker:
+    networks: [browser_net]
+    build:
+      context: .
+      dockerfile: workers/browser/Dockerfile
+    environment:
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate .env with scripts/init_env.py}
+      DEEPSEEK_URL: https://chat.deepseek.com
+      DEEPSEEK_INPUT_SELECTOR: ${DEEPSEEK_INPUT_SELECTOR:-textarea, [contenteditable='true']}
+      DEEPSEEK_ANSWER_SELECTOR: ${DEEPSEEK_ANSWER_SELECTOR:-.ds-markdown}
+      DEEPSEEK_SEND_SELECTOR: ${DEEPSEEK_SEND_SELECTOR:-}
+      DEEPSEEK_NEW_CHAT_SELECTOR: ${DEEPSEEK_NEW_CHAT_SELECTOR:-}
+      DEEPSEEK_SEARCH_TOGGLE_SELECTOR: ${DEEPSEEK_SEARCH_TOGGLE_SELECTOR:-}
+      DEEPSEEK_SEARCH_ENABLED_SELECTOR: ${DEEPSEEK_SEARCH_ENABLED_SELECTOR:-}
+    volumes:
+      - browserdata:/data
+    shm_size: 512m
+    mem_limit: 2g
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    # VNC and API are internal. They are mapped through the authenticated app.
+  indexer-worker:
+    networks: [indexer_net]
+    build:
+      context: .
+      dockerfile: workers/indexer/Dockerfile
+    environment:
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+    read_only: true
+    tmpfs: ["/tmp:size=256m,noexec,nosuid"]
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  screenshot-worker:
+    networks: [screenshot_net]
+    build:
+      context: .
+      dockerfile: workers/browser/Screenshot.Dockerfile
+    environment:
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+    read_only: true
+    tmpfs: ["/tmp:size=256m,nosuid"]
+    shm_size: 256m
+    mem_limit: 1g
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  searxng-init:
+    image: python:3.12-alpine
+    networks: [search_net]
+    environment:
+      SEARXNG_SECRET: ${OSA_WORKER_TOKEN:?Generate worker token}
+    volumes:
+      - searchconfig:/config
+      - ./deploy/searxng.yml:/template.yml:ro
+    command: ["python", "-c", "import os,pathlib; pathlib.Path('/config/settings.yml').write_text(pathlib.Path('/template.yml').read_text().replace('CHANGE_ME',os.environ['SEARXNG_SECRET']))"]
+  searxng:
+    networks: [search_net]
+    depends_on:
+      searxng-init:
+        condition: service_completed_successfully
+    image: searxng/searxng:latest
+    volumes:
+      - searchconfig:/etc/searxng
+    environment:
+      SEARXNG_SECRET: ${OSA_WORKER_TOKEN:?Generate worker token}
+    restart: unless-stopped
+  sandbox-worker:
+    networks: [sandbox_net]
+    profiles: [sandbox]
+    build:
+      context: .
+      dockerfile: workers/sandbox/Dockerfile
+    environment:
+      OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Generate worker token}
+      SANDBOX_DATA_DIR: /sandbox-data
+      SANDBOX_HOST_DATA_DIR: ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}
+      SANDBOX_IMAGE: osa-python-runner:0.2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}:/sandbox-data
+    restart: unless-stopped
+volumes:
+  appdata:
+  browserdata:
+  searchconfig:
+
+networks:
+  core:
+    internal: true
+  browser_net: {}
+  indexer_net:
+    internal: true
+  sandbox_net:
+    internal: true
+  screenshot_net: {}
+  search_net: {}

@@ -1,0 +1,89 @@
+【0.4.0 / V3 更新】
+先看 4核8G部署说明.txt。Python 依赖在 requirements.txt，开发依赖在 requirements-dev.txt。
+Docker 启动会自动安装依赖；OpenCode 可选镜像额外自动安装锁定的 npm 包，宿主机无需 Node。
+新增 startup.ini 的 coding=builtin/opencode、V3 模型配置及只读审查，见 docs/v3-implementation.md。
+升级需备份、保留原 .env/project/storage 并执行 Alembic 0005；Docker 启动器自动运行迁移。
+
+0.3.0 / Design V2 更新
+================================
+你的新服务器：4 核 / 8 GB RAM / 1 TB。
+新安装 startup.ini 默认 normal + PostgreSQL + work + sandbox。
+先执行 python3 scripts/init_env.py，再编辑 .env 的 QQ、群白名单、真实模型配置。
+初始化会生成随机数据库密码及独立的 Admin/NapCat/Worker/Echo Token。
+统一启动：python3 start.py up
+配置检查：python3 start.py check
+查看状态/日志：python3 start.py status / logs
+备份：python3 start.py backup（暂停写入后备份，未实机验证恢复）
+详细步骤见 docs/server-4c8g.md；V2 能力边界见 docs/v2-implementation.md。
+旧配置没有 storage/work 时仍沿用 SQLite；不要直接覆盖旧凭据和存储选择。
+Python 依赖仍见 requirements.txt，新增 PostgreSQL 控制平面 psycopg 驱动。
+
+以下是历史直接安装/双模式说明，旧 1 GB 配置参考，不是新服务器默认配置：
+
+推荐启动方式（0.2.2 双模式）
+================================
+配置文件 startup.ini：mode = normal 为普通模式，mode = lowmem 为低内存模式。
+默认 lowmem；你这台 1 核 1 GB 服务器保持默认即可，需要至少 4 GiB Swap。
+在项目目录执行 python3 scripts/init_env.py，然后编辑 .env 中的 QQ 和模型配置。
+启动一律使用：python3 start.py up
+切换模式：修改 startup.ini，再运行同一条启动命令。
+两种模式共用数据库、附件和 DeepSeek 登录资料，模式不自动改变记录保留期。
+sandbox = true 时由启动器构建并开启 Python/插件隔离执行。
+详细步骤：docs/startup-modes.md。
+宿主机需 Python 3.10+、Docker 和 Compose v2，无需安装宿主机 Python 依赖；镜像内自动安装。
+以下保留直接 Python 安装方式及外部依赖说明。
+
+OpenSocialAgent 完整版安装说明
+================================
+
+一、环境
+1. Python 3.12 或更新版本。
+2. QQ 接入需要独立安装 NapCat，并配置反向 WebSocket。
+3. 推荐 Docker + Docker Compose，用于 PostgreSQL、独立浏览器和隔离代码执行。
+
+二、安装 Python 依赖（在解压后的项目目录执行）
+python -m venv .venv
+
+Windows PowerShell：
+.venv\Scripts\Activate.ps1
+
+Linux / macOS：
+source .venv/bin/activate
+
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
+
+需要开发/测试工具时：
+python -m pip install -r requirements-dev.txt
+
+三、初始配置和启动
+python scripts/init_env.py
+编辑生成的 .env，填写机器人QQ号、授权群、模型和所需服务。
+alembic upgrade head
+osa
+
+WebUI：http://127.0.0.1:8080/
+管理员凭据是 .env 的 OSA_ADMIN_TOKEN。
+不要将真实 .env 上传或发送给其他人。
+
+四、外部程序
+视频处理需要 FFmpeg；OCR 如选择 Tesseract，需要安装 tesseract-ocr 和中文语言包。
+浏览器工作区需要 Playwright Chromium、Xvfb、x11vnc 和 noVNC。
+推荐使用项目的 browser-worker Docker 镜像，不必在宿主机逐一安装这些程序。
+DeepSeek 首次登录由用户在 WebUI 的实时浏览器里完成扫码和验证码。
+程序不会绕过验证码或伪装成已经成功登录。
+
+五、依赖文件用途
+requirements.txt：运行与完整功能的 Python 依赖。
+requirements-dev.txt：额外测试、格式和类型检查工具。
+pyproject.toml：Python 项目元数据、入口命令和依赖声明。
+Docker Compose：独立服务及非 Python 依赖。
+
+详细配置、能力开关和外部服务要求请阅读 README.md 和 docs/。
+
+六、1 核 / 1 GB Linux 专用方案（0.2.2 双模式）
+请优先阅读 docs/low-memory.md 或 1核1G部署说明.txt。
+在 startup.ini 选择 mode = lowmem，统一使用 python3 start.py up；先准备至少 4 GiB Swap。
+不在宿主机安装 requirements.txt，镜像会安装 Python 依赖。
+浏览器按需启动、空闲释放，研究仍走真实 DeepSeek 网页。
+当前还没有在实际 1 GB 服务器上完成容器压测，首次部署需逐项验收。

@@ -1,0 +1,130 @@
+# ============================================================
+#  敏感凭据 —— 绝对不要提交
+# ============================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+credentials*.json
+secrets.json
+secrets.yml
+secrets.yaml
+token.json
+cookies.json
+*_token.txt
+*_secret.txt
+
+# ============================================================
+#  运行时数据 —— 含真实 QQ 聊天、群文件、用户隐私
+# ============================================================
+data/
+backups/
+logs/
+*.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+osa.db
+registry.db
+*.session
+*.session-journal
+
+# 浏览器 profile / 登录态（DeepSeek 扫码后的 Cookie）
+browserdata/
+*.har
+playwright-report/
+
+# 模型缓存与向量索引（体积大、可重建）
+.cache/
+models/
+*.faiss
+*.index
+embeddings/
+
+# ============================================================
+#  Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# 测试与检查工具缓存
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# ============================================================
+#  编辑器 / IDE
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# ============================================================
+#  操作系统
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================
+#  本地临时文件
+# ============================================================
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
+sandbox-jobs/
+workspaces/
+.codex-remote-attachments/
+exports/
+.public-release-private.json
+.codex/
+.agents/
+.aws/
+.ssh/

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head><script src="/template-tailwind.js"></script><script>tailwind.config={darkMode:['class','.dark-theme']}</script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>汐言 · TideTalk Console</title>
+<style>
+
+    :root {
+      --bg-primary: #fdf6f9;
+      --bg-card: rgba(255, 255, 255, 0.88);
+      --bg-sub: rgba(255, 245, 250, 0.78);
+      --bg-input: #ffffff;
+      --text-main: #2d2338;
+      --text-muted: #7a6b8a;
+      --accent-pink: #ff6b9d;
+      --accent-cyan: #38bdf8;
+      --border-soft: rgba(255, 107, 157, 0.22);
+    }
+
+    body.dark-theme {
+      --bg-primary: #110f1d;
+      --bg-card: rgba(26, 23, 44, 0.88);
+      --bg-sub: rgba(36, 32, 58, 0.78);
+      --bg-input: #161326;
+      --text-main: #f5f0ff;
+      --text-muted: #a396b8;
+      --border-soft: rgba(255, 107, 157, 0.28);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      background-image:
+        radial-gradient(at 12% 15%, rgba(255, 154, 198, 0.22) 0px, transparent 50%),
+        radial-gradient(at 88% 10%, rgba(125, 211, 252, 0.22) 0px, transparent 50%),
+        radial-gradient(at 50% 90%, rgba(196, 181, 253, 0.18) 0px, transparent 50%);
+      background-attachment: fixed;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .anime-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 10px 30px -8px rgba(255, 107, 157, 0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .anime-subcard {
+      background: var(--bg-sub);
+      border: 1px solid var(--border-soft);
+    }
+
+    .anime-input {
+      background-color: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-soft);
+    }
+
+    .anime-input:focus {
+      outline: none;
+      border-color: #ec4899;
+      box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.12);
+    }
+
+    .anime-gradient-btn {
+      background: linear-gradient(135deg, #ff6b9d 0%, #c084fc 55%, #38bdf8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 18px -4px rgba(255, 107, 157, 0.45);
+      transition: all 0.2s ease;
+    }
+
+    .anime-gradient-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px -4px rgba(255, 107, 157, 0.6);
+      filter: brightness(1.03);
+    }
+
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(255, 107, 157, 0.18), rgba(56, 189, 248, 0.15));
+      color: #ec4899;
+      border-color: rgba(255, 107, 157, 0.45);
+      font-weight: 600;
+    }
+
+    body.dark-theme .nav-btn.active {
+      color: #ff85b3;
+    }
+
+    .subtab-btn {
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .subtab-btn.active {
+      background: linear-gradient(135deg, #ff6b9d 0%, #c084fc 60%, #38bdf8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 18px -4px rgba(255, 107, 157, 0.45);
+      font-weight: 600;
+    }
+
+    .vendor-item.active {
+      background: linear-gradient(135deg, rgba(255, 107, 157, 0.14), rgba(192, 132, 252, 0.12));
+      border-color: #ec4899;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 107, 157, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 107, 157, 0.6);
+    }
+
+    input[type="range"] {
+      accent-color: #ec4899;
+    }
+  </style>
+<link href="/console-redesign.css?v=20261025-sidebar" rel="stylesheet"/></head>
+<body class="min-h-screen antialiased selection:bg-pink-400 selection:text-white flex auth-locked">
+<section aria-labelledby="login-title" id="login-screen">
+<div aria-hidden="true" class="login-decoration login-decoration-pink"></div>
+<div aria-hidden="true" class="login-decoration login-decoration-blue"></div>
+<div class="login-card anime-card">
+<div class="login-brand"><span aria-hidden="true" class="login-logo">🐾</span><span>汐言 <span class="login-brand-badge">TIDETALK</span></span></div>
+<div class="login-heading"><span class="login-eyebrow">欢迎回来</span><h1 id="login-title">登录你的控制台</h1><p>管理模型、设定人格，让机器人按你的方式工作。</p></div>
+<form id="login-form" novalidate="">
+<label class="login-label" for="token">管理密钥</label>
+<input aria-describedby="login-error" autocomplete="current-password" autofocus="" id="token" name="password" placeholder="输入管理密钥" required="" type="password"/>
+<p hidden="" id="login-error" role="alert"></p>
+<button class="anime-gradient-btn login-submit" id="connect" type="submit"><span aria-hidden="true" class="login-spinner"></span><span id="login-button-label">登录控制台</span><span aria-hidden="true">→</span></button>
+</form>
+<div class="login-caption" id="sessionStatus">汐言 · TideTalk Console</div>
+</div>
+</section>
+<!-- 左侧固定导航栏 (模块分类) -->
+<aside class="w-64 shrink-0 anime-card border-y-0 border-l-0 rounded-none flex flex-col justify-between sticky top-0 h-screen z-30">
+<div>
+<!-- 顶部 Logo 与 Bot 状态 -->
+<div class="p-5 border-b border-pink-500/15 flex items-center gap-3">
+<div class="relative">
+<div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-400 via-purple-400 to-sky-400 p-0.5 shadow-md">
+<div class="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center font-bold text-lg text-pink-500">
+              🐾
+            </div>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full" id="connectionDot"></span>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<h1 class="font-bold text-base tracking-tight">汐言</h1>
+<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-pink-500/15 text-pink-500 font-semibold">TIDETALK</span>
+</div>
+<p class="text-xs text-slate-400" id="connectionText">OneBot v11 · 检查中</p>
+</div>
+</div>
+<!-- 模块分类列表 -->
+<nav aria-label="管理导航" class="p-3.5 space-y-1.5" id="main-nav">
+<div class="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          核心模块分类
+        </div>
+<button class="nav-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border border-transparent transition-all text-left" data-view="overview" aria-current="page" id="tab-overview" onclick="switchTab('overview')">
+<span class="text-base">📊</span>
+<span>总览看板</span>
+</button>
+<button class="nav-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm border border-transparent transition-all text-left" data-view="models" id="tab-models" onclick="switchTab('models')">
+<div class="flex items-center gap-3">
+<span class="text-base">🧠</span>
+<span>模型配置中心</span>
+</div>
+<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-pink-500/15 text-pink-500 font-medium">负载均衡</span>
+</button>
+<button class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border border-transparent transition-all text-left" data-view="persona" id="tab-persona" onclick="switchTab('persona')">
+<span class="text-base">🎭</span>
+<span>灵魂人格设定</span>
+</button>
+<button class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border border-transparent transition-all text-left" data-view="groups" id="tab-groups" onclick="switchTab('groups')">
+<span class="text-base">💬</span>
+<span>QQ 群管与风控</span>
+</button>
+<button class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border border-transparent transition-all text-left" data-view="sandbox" id="tab-sandbox" onclick="switchTab('sandbox')">
+<span class="text-base">🧪</span>
+<span>对话回放</span>
+</button>
+</nav>
+</div>
+<!-- 底部快捷操作与主题切换 -->
+<div class="p-4 border-t border-pink-500/15 space-y-3">
+<div class="anime-subcard p-3 rounded-xl text-xs"><div class="text-slate-400">运行状态</div><div class="mt-1 font-semibold" id="runtime-status">等待管理员连接</div></div>
+<div class="flex items-center gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl border border-pink-500/20 hover:bg-pink-500/10 text-xs font-medium flex items-center justify-center gap-1.5 transition" onclick="toggleTheme()">
+<span id="theme-icon">🌙</span>
+<span id="theme-text">暗夜模式</span>
+</button>
+<button class="anime-gradient-btn py-2 px-3 rounded-xl text-xs font-medium" id="refresh" onclick="refreshConsole()">↻ 刷新数据</button>
+</div>
+</div>
+<div class="aside-foot hidden"></div></aside>
+<!-- 右侧主内容区 -->
+<main class="flex-1 min-w-0 p-6 lg:p-8 overflow-y-auto">
+<!-- 顶部状态提示栏 -->
+<header class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-pink-500/15">
+<div>
+<h2 class="text-xl font-bold tracking-tight" id="page-title">📊 总览看板</h2>
+<p class="text-xs text-slate-400 mt-0.5" id="page-desc">查看机器人实际运行状态、消息与模型用途。</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="anime-card px-3.5 py-2 rounded-xl text-xs flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-pink-400"></span>
+<span>当前激活人格：</span>
+<strong class="text-pink-500" id="active-persona">等待连接</strong>
+</div>
+<details class="account-menu" id="account-menu"><summary aria-label="账户菜单" title="账户菜单"><svg aria-hidden="true" fill="none" height="19" stroke="currentColor" stroke-width="1.6" viewbox="0 0 24 24" width="19"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 21v-2a7 7 0 0 1 14 0v2"></path></svg></summary><div class="account-popover"><div class="account-caption">控制台账户</div><button id="logout" type="button">退出登录 <span aria-hidden="true">↗</span></button></div></details></div>
+</header>
+<!-- ================= 模块 1：总览看板 ================= -->
+<section class="space-y-6" id="sec-overview">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="anime-card p-5 rounded-2xl">
+<div class="text-xs text-slate-400 flex justify-between">
+<span>累计接收事件</span>
+<span class="text-pink-500">📩</span>
+</div>
+<div class="text-2xl font-bold mt-2" id="eventCount">—</div>
+<div class="text-[11px] text-slate-400 mt-1">尚未连接</div>
+</div>
+<div class="anime-card p-5 rounded-2xl">
+<div class="text-xs text-slate-400 flex justify-between">
+<span>已确认发送</span>
+<span class="text-amber-500">🛡️</span>
+</div>
+<div class="text-2xl font-bold mt-2" id="sentCount">—</div>
+<div class="text-[11px] text-slate-400 mt-1">尚未连接</div>
+</div>
+<div class="anime-card p-5 rounded-2xl">
+<div class="text-xs text-slate-400 flex justify-between">
+<span>已接入 API 厂商</span>
+<span class="text-sky-500">🔌</span>
+</div>
+<div class="text-2xl font-bold mt-2" id="stat-vendor-count">—</div>
+<div class="text-[11px] text-slate-400 mt-1">模型池共 <span id="stat-model-count">—</span> 个</div>
+</div>
+<div class="anime-card p-5 rounded-2xl">
+<div class="text-xs text-slate-400 flex justify-between">
+<span>授权群数量</span>
+<span class="text-emerald-500">🎯</span>
+</div>
+<div class="text-2xl font-bold mt-2" id="groupCount">—</div>
+<div class="text-[11px] text-slate-400 mt-1">来自实际群白名单</div>
+</div>
+</div>
+<div class="anime-card p-6 rounded-2xl">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-sm flex items-center gap-2">
+<span>🔗 当前大脑功能多模型路由矩阵</span>
+</h3>
+<button class="text-xs text-pink-500 hover:underline" onclick="switchTab('models'); switchModelSubTab('routing');">前往功能路由修改 →</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5" id="overview-routing-grid"></div>
+</div>
+<div class="anime-card rounded-2xl p-5 toolbar"><span class="badge" id="runBadge">等待连接</span><span class="badge" id="modeBadge">—</span><span class="note" id="modelLabel">—</span><span class="note" id="storageLabel">—</span><span class="note" id="pausedLabel">—</span><span class="hidden" id="unknownCount">—</span></div><div class="anime-card rounded-2xl p-5"><h3 class="font-bold mb-4">💬 最近的机器人回复</h3><div class="empty" id="recentMessages">连接后查看消息</div></div></section>
+<!-- ================= 模块 2：模型配置中心 (上方三选项切换 + 下方对应列表视图) ================= -->
+<section class="hidden space-y-5" id="sec-models">
+<!-- 顶部三个切换选项卡 -->
+<div class="anime-card p-2 rounded-2xl grid grid-cols-1 sm:grid-cols-3 gap-2">
+<button class="subtab-btn py-3 px-4 rounded-xl flex items-center justify-between text-left" id="subtab-vendors" onclick="switchModelSubTab('vendors')">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-lg bg-pink-500/15 text-pink-500 flex items-center justify-center text-sm font-bold">1</span>
+<div>
+<div class="text-sm font-bold">🏢 1. 添加 API 厂商</div>
+<div class="text-[11px] opacity-80">配置供应商接口与密钥</div>
+</div>
+</div>
+<span class="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10" id="tab-badge-vendors">—</span>
+</button>
+<button class="subtab-btn py-3 px-4 rounded-xl flex items-center justify-between text-left" id="subtab-pool" onclick="switchModelSubTab('pool')">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-500 flex items-center justify-center text-sm font-bold">2</span>
+<div>
+<div class="text-sm font-bold">📦 2. 从 API 添加模型</div>
+<div class="text-[11px] opacity-75">从已选厂商注册可用模型</div>
+</div>
+</div>
+<span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-500 font-medium" id="tab-badge-models">—</span>
+</button>
+<button class="subtab-btn active py-3 px-4 rounded-xl flex items-center justify-between text-left" id="subtab-routing" onclick="switchModelSubTab('routing')">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center text-sm font-bold">3</span>
+<div>
+<div class="text-sm font-bold">⚙️ 3. 给功能分配模型</div>
+<div class="text-[11px] opacity-85">选择主模型，需要时添加备用模型</div>
+</div>
+</div>
+<span class="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-medium" id="tab-badge-functions">—</span>
+</button>
+</div>
+<!-- 下方对应选项的内容区域 -->
+<div class="anime-card rounded-2xl p-6 min-h-[560px]">
+<!-- 视图 1：添加与管理 API 厂商列表 -->
+<div class="hidden space-y-6" id="model-view-vendors">
+<div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-pink-500/15">
+<div>
+<h3 class="text-base font-bold flex items-center gap-2">
+<span>🏢 第一步：API 厂商列表管理</span>
+</h3>
+<p class="text-xs text-slate-400 mt-0.5">添加你的模型接口服务商（如 DeepSeek、OpenAI、SiliconFlow、Ollama 本地等），点击卡片即可设为当前操作厂商</p>
+</div>
+<button class="anime-gradient-btn px-4 py-2 rounded-xl text-xs font-semibold" onclick="switchModelSubTab('pool')">
+              下一步：去为选中厂商添加模型 →
+            </button>
+</div>
+<div class="anime-subcard p-4 rounded-2xl space-y-3">
+<div class="text-xs font-bold text-pink-500">+ 新增 API 供应商</div>
+<div class="vendor-create-grid grid grid-cols-1 md:grid-cols-3 gap-3">
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">厂商名称</label>
+<input class="anime-input w-full px-3.5 py-2 rounded-xl text-xs" id="new-vendor-name" placeholder="例如: SiliconFlow / OpenAI" type="text"/>
+</div>
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">API Base URL</label>
+<input class="anime-input w-full px-3.5 py-2 rounded-xl text-xs" id="new-vendor-url" placeholder="例如: https://api.xxx.com/v1" type="text"/>
+</div>
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">API Key 密钥</label>
+<div class="flex gap-2">
+<input class="anime-input flex-1 px-3.5 py-2 rounded-xl text-xs" id="new-vendor-key" placeholder="sk-..." type="password"/>
+<button class="anime-gradient-btn px-5 py-2 rounded-xl text-xs font-semibold shrink-0" onclick="addVendor()">
+                    + 添加厂商
+                  </button>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="text-xs font-semibold text-slate-400 mb-3">已接入的 API 厂商（点击选择当前厂商）：</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="vendor-list"></div>
+</div>
+</div>
+<!-- 视图 2：从 API 厂商添加模型列表 -->
+<div class="hidden space-y-6" id="model-view-pool">
+<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-pink-500/15">
+<div>
+<h3 class="text-base font-bold flex items-center gap-2">
+<span>📦 第二步：从 API 厂商添加模型</span>
+</h3>
+<p class="text-xs text-slate-400 mt-0.5">先选择上方的所属 API 厂商，然后将该厂商支持的模型加入机器人可用模型池</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3.5 py-2 rounded-xl border border-pink-500/25 text-xs hover:bg-pink-500/10 transition" onclick="switchModelSubTab('vendors')">
+                ← 返回厂商列表
+              </button>
+<button class="anime-gradient-btn px-4 py-2 rounded-xl text-xs font-semibold" onclick="switchModelSubTab('routing')">
+                下一步：给功能分配多模型 →
+              </button>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<span class="text-xs font-semibold text-slate-400 mr-1">切换当前 API 厂商：</span>
+<div class="flex flex-wrap gap-2" id="pool-vendor-pills"></div>
+</div>
+<div class="anime-subcard p-4 rounded-2xl space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-purple-500">
+                + 从【<span id="current-vendor-label">请选择厂商</span>】添加模型
+              </span>
+<button class="text-xs text-sky-500 hover:underline font-medium" onclick="QuickFetchModels()">
+                ⚡ 自动从该厂商接口拉取模型
+              </button>
+</div>
+<div class="model-create-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">模型 ID (API 调用名)</label>
+<input class="anime-input w-full px-3.5 py-2 rounded-xl text-xs" id="new-model-id" placeholder="例如: deepseek-chat / gpt-4o" type="text"/>
+</div>
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">显示别名 (易读名称)</label>
+<input class="anime-input w-full px-3.5 py-2 rounded-xl text-xs" id="new-model-alias" placeholder="例如: DeepSeek V3 主力" type="text"/>
+</div>
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">模型能力</label>
+<div class="capability-options" id="new-model-capabilities">
+<label class="check-field"><input type="checkbox" value="chat" checked/><span>💬 对话</span></label>
+<label class="check-field"><input type="checkbox" value="video"/><span>🎬 视频</span></label>
+<label class="check-field"><input type="checkbox" value="image"/><span>🖼️ 图片</span></label>
+<label class="check-field"><input type="checkbox" value="embedding"/><span>🔗 向量</span></label>
+</div></div><div><label class="text-[11px] text-slate-400 block mb-1" for="new-model-mode">响应方式</label><div class="flex gap-2"><select class="anime-input flex-1 px-3 py-2 rounded-xl text-xs" id="new-model-mode"><option value="normal">非流式</option><option value="stream">流式</option></select><button class="anime-gradient-btn px-5 py-2 rounded-xl text-xs font-semibold shrink-0" onclick="addModelToVendor()">
+                    + 加入模型池
+                  </button>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-semibold text-slate-400">当前厂商已注册模型列表：</span>
+<span class="text-xs text-purple-500 font-medium" id="pool-count-hint"></span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="model-list"></div>
+</div>
+</div>
+<!-- 视图 3：给机器人各功能分配多模型 (支持主备容灾切换、平均负载、加权分流) -->
+<div class="space-y-6" id="model-view-routing">
+<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-pink-500/15">
+<div>
+<h3 class="text-base font-bold flex items-center gap-2">
+<span>⚙️ 功能模型配置</span>
+</h3>
+<p class="text-xs text-slate-400 mt-0.5">点击功能卡片选择模型；参数已有默认值，通常不用修改。</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="anime-gradient-btn px-4 py-2 rounded-xl text-xs font-semibold" id="replace-task-models">批量替换模型</button>
+<button class="px-3.5 py-2 rounded-xl border border-pink-500/25 text-xs hover:bg-pink-500/10 transition" onclick="switchModelSubTab('pool')">
+                ← 返回模型池
+              </button>
+<button class="anime-gradient-btn px-4 py-2 rounded-xl text-xs font-semibold" onclick="refreshConsole()">↻ 刷新用途配置</button>
+</div>
+</div>
+<!-- 策略图例说明条 -->
+
+<!-- 功能分配列表 (多模型卡片展示) -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-5" id="function-routing-list">
+<!-- JS 动态渲染 -->
+</div>
+<details class="route-guide anime-subcard"><summary>了解调度策略</summary><div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5">
+<span class="text-base">🛡️</span>
+<div>
+<div class="font-bold text-amber-600 dark:text-amber-400">主备容灾切换</div>
+<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">优先调用列表首个模型，失败后按顺序尝试后续模型。</div>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-start gap-2.5">
+<span class="text-base">⚖️</span>
+<div>
+<div class="font-bold text-sky-600 dark:text-sky-400">按负载均衡</div>
+<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">综合调用量、延迟与失败情况选择模型，失败后切换。</div>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-start gap-2.5">
+<span class="text-base">🔄</span>
+<div>
+<div class="font-bold text-purple-600 dark:text-purple-400">随机分配</div>
+<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">随机调整候选模型顺序，失败后尝试其他候选模型。</div>
+</div>
+</div>
+</div></details></div>
+</div>
+</section>
+<!-- ================= 模块 3：灵魂人格设定 ================= -->
+<section class="hidden space-y-6" id="sec-persona"><div class="anime-card p-6 rounded-2xl"><div class="section-heading"><div><h3 class="font-bold text-base">🎭 灵魂人格设定</h3><p class="note">稳定身份、性格与称呼分别保存。</p></div><span class="badge">管理员设定</span></div><div class="config-grid" id="persona-fields"></div><div class="toolbar mt-5"><button class="anime-gradient-btn px-5 py-2 rounded-xl text-xs font-semibold" onclick="savePersona()">保存人格设定</button></div></div></section>
+<!-- ================= 模块 4：QQ 群管与风控 ================= -->
+<section class="hidden space-y-6" id="sec-groups">
+<div class="anime-card p-6 rounded-2xl space-y-4">
+<h3 class="font-bold text-base">💬 活跃 QQ 群策略控制</h3>
+<div class="space-y-3 text-sm" id="group-cards"></div>
+</div>
+</section>
+<!-- ================= 模块 5：对话调试沙盒 ================= -->
+<section class="hidden space-y-4" id="sec-sandbox"><div class="anime-card p-6 rounded-2xl"><h3 class="font-bold text-base">🧪 对话回放</h3><p class="note mt-2">使用已保存的机器人消息，重新生成候选回复与决策记录。回放结果不会发送到 QQ。</p><div class="toolbar mt-5"><input class="anime-input px-3 py-2 rounded-xl" id="replay-id" placeholder="机器人消息 ID"/><button class="anime-gradient-btn px-4 py-2 rounded-xl text-xs" onclick="runReplay()">开始回放</button><button class="btn" onclick="switchTab('messages')">从消息列表选择</button></div><pre class="mt-4" id="replay-result">等待回放</pre></div></section>
+<section class="hidden space-y-6" id="sec-messages"><div class="panel"><div class="panel-head toolbar"><input id="query" placeholder="搜索回复内容" type="search"/><select aria-label="交付状态" id="statusFilter"><option value="">全部状态</option><option value="sent">已发送</option><option value="pending">待发送</option><option value="unknown">结果未知</option><option value="cancelled">已取消</option><option value="failed">失败</option></select><button class="btn primary" id="searchMessages">搜索</button></div><div class="table-wrap"><table><thead><tr><th>会话 / 时间</th><th>回复内容</th><th>交付状态</th><th>模型</th><th>审查</th></tr></thead><tbody id="messagesTable"></tbody></table></div><div class="panel-body toolbar"><button class="btn" hidden="" id="moreMessages">加载更早消息</button><span class="note">回放只生成候选结果，不发送到 QQ。</span></div></div></section><section class="hidden space-y-6" id="sec-memories"><div class="panel"><div class="panel-head toolbar"><input id="memoryActor" inputmode="numeric" placeholder="用户 QQ 号"/><button class="btn primary" id="searchMemories">查询记忆</button></div><div class="table-wrap"><table><thead><tr><th>ID / 来源</th><th>内容</th><th>作用域</th><th>版本</th><th>操作</th></tr></thead><tbody id="memoriesTable"></tbody></table></div></div><div class="hint">仅系统管理员可访问此页。用户可通过 /记忆 查看、更正、删除 和 撤销跨群管理本人的记忆。</div></section><section class="hidden space-y-6" id="sec-resources"><div class="panel"><div class="panel-head toolbar"><select aria-label="资料所属群" id="resourceGroup"></select><select aria-label="资料类型" id="resourceKind"><option value="notices">群公告</option><option value="files">文件元数据</option></select><button class="btn" id="loadResources">查看缓存</button><button class="btn primary" id="syncResources">从 QQ 刷新</button></div><div class="table-wrap"><table><thead><tr><th>平台 ID</th><th>内容 / 文件名</th><th>版本</th><th>最近同步</th></tr></thead><tbody id="resourcesTable"></tbody></table></div></div><div class="hint warn">先在群策略中授权读取，并连接 NapCat。文件仅同步元数据，没有下载或阅读正文。</div></section><section class="hidden space-y-6" id="sec-extensions"><div class="panel"><div class="panel-head"><h2>能力与扩展契约</h2><span class="badge">SDK 1.0</span></div><div class="panel-body" id="capabilitiesList"><p>连接后查看能力状态。</p></div></div><div class="hint">预留 MediaProvider、EmbeddingProvider、ResearchProvider、ObjectStore 和 ToolExecutor。当前版本不执行第三方 Python 插件。</div></section><section class="hidden space-y-6" id="sec-system"><div class="panel"><div class="panel-head"><h2>部署与模型信息</h2></div><div class="panel-body"><pre id="systemInfo">连接后显示非敏感配置。API Key 与数据库密码不会返回页面。</pre></div></div><div class="panel"><div class="panel-head"><h2>紧急控制</h2></div><div class="panel-body"><strong>暂停所有新响应与待发回复</strong><p>无法撤回已发送消息，无法中止已进入外部发送调用的请求。</p><div class="toolbar" style="margin-top:18px"><button class="btn danger" id="pauseBot">暂停响应</button><button class="btn" id="resumeBot">恢复响应</button></div></div></div><div class="hint">API 厂商、模型和人设可在对应页面配置。QQ 账号和群白名单在部署配置中维护。</div></section><div class="footer">NekoBot Console · QQAIBOT</div></main>
+<!-- 浮动通知 Toast -->
+<div aria-live="polite" class="fixed bottom-5 right-5 z-50 hidden anime-card px-4 py-2.5 rounded-xl border border-pink-500/40 text-xs font-medium shadow-lg" id="toast" role="status"></div>
+<dialog id="modal"><div class="panel-head"><h2 id="modalTitle">详情</h2><button class="btn small" id="closeModal">关闭</button></div><div class="dialog-body" id="modalBody"></div><div class="dialog-footer" id="modalFooter"></div></dialog><script src="/template-bridge.js?v=20261025-model-retry"></script><script src="/template-handlers.js"></script><script src="/console-extra.js?v=20261025-shared-stickers"></script><script src="/console-v2.js"></script><script src="/console-v3.js"></script><script src="/console-operations.js?v=20261025-model-flow"></script><script src="/console-simple.js?v=20261025-sidebar"></script><script src="/console-prompt-slots.js?v=20261018-batch-prompts"></script></body>
+</html>

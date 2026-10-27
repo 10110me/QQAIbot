@@ -1,0 +1,160 @@
+# Standalone file. Do NOT merge with docker-compose.yml or full.yml.
+# Requires Linux with working swap (recommended 4 GiB); one heavy operation at a time.
+name: osa-lowmem
+
+x-worker-env: &worker-env
+  OSA_WORKER_TOKEN: ${OSA_WORKER_TOKEN:?Run python3 scripts/init_env.py first}
+  OSA_HEAVY_SLOT: /slots/heavy.lock
+  OSA_HEAVY_WAIT_SECONDS: "180"
+  MALLOC_ARENA_MAX: "2"
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+
+x-worker: &worker
+  restart: unless-stopped
+  init: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: local
+    options: {max-size: 5m, max-file: "2"}
+
+services:
+  # This exits after provisioning a lock inode accessible to the trusted workers.
+  slots-init:
+    image: python:3.12-slim
+    network_mode: none
+    volumes: [slots:/slots]
+    command: [python, -c, "import pathlib,os; p=pathlib.Path('/slots/heavy.lock'); p.touch(exist_ok=True); os.chmod(p,0o666)"]
+    mem_limit: 32m
+    memswap_limit: 64m
+
+  app:
+    <<: *worker
+    build: .
+    env_file: .env
+    environment:
+      OSA_HOST: 0.0.0.0
+      OSA_DATABASE_URL: sqlite+aiosqlite:////app/data/osa.db
+      OSA_AUTO_CREATE_SCHEMA: "false"
+      OSA_DATA_DIR: /app/data
+      OSA_DATABASE_POOL_SIZE: "1"
+      OSA_WORKER_CONCURRENCY: "1"
+      OSA_TASK_CONCURRENCY: "1"
+      OSA_MAX_CONTEXT_CHARS: "10000"
+      OSA_MAX_DOWNLOAD_BYTES: "5000000"
+      OSA_RESEARCH_ENABLED: "true"
+      OSA_DEEPSEEK_WEB_ENABLED: "true"
+      OSA_DEEPSEEK_TRIGGER: always
+      OSA_SEARCH_PROVIDER: none
+      OSA_BROWSER_WORKER_URL: http://browser-worker:8090
+      OSA_BROWSER_VNC_URL: http://browser-worker:6080
+      OSA_INDEXER_WORKER_URL: http://indexer-worker:8092
+      OSA_SCREENSHOT_WORKER_URL: http://screenshot-worker:8093
+      OSA_SANDBOX_WORKER_URL: http://sandbox-worker:8091
+      OSA_RETENTION_DAYS: "7"
+      MALLOC_ARENA_MAX: "2"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    ports: ["${OSA_BIND_ADDRESS:-127.0.0.1}:8080:8080"]
+    volumes: [appdata:/app/data]
+    networks: [edge, browser_net, indexer_net, screenshot_net, sandbox_net]
+    depends_on:
+      browser-worker: {condition: service_started}
+      indexer-worker: {condition: service_started}
+      screenshot-worker: {condition: service_started}
+    mem_limit: 192m
+    memswap_limit: 640m
+    cpus: 0.8
+    pids_limit: 64
+
+  browser-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/browser/Dockerfile}
+    environment:
+      <<: *worker-env
+      BROWSER_LAZY: "true"
+      BROWSER_IDLE_SECONDS: "30"
+      DEEPSEEK_URL: https://chat.deepseek.com
+      DEEPSEEK_INPUT_SELECTOR: ${DEEPSEEK_INPUT_SELECTOR:-textarea, [contenteditable='true']}
+      DEEPSEEK_ANSWER_SELECTOR: ${DEEPSEEK_ANSWER_SELECTOR:-.ds-markdown}
+      DEEPSEEK_SEND_SELECTOR: ${DEEPSEEK_SEND_SELECTOR:-}
+      DEEPSEEK_NEW_CHAT_SELECTOR: ${DEEPSEEK_NEW_CHAT_SELECTOR:-}
+      DEEPSEEK_SEARCH_TOGGLE_SELECTOR: ${DEEPSEEK_SEARCH_TOGGLE_SELECTOR:-}
+      DEEPSEEK_SEARCH_ENABLED_SELECTOR: ${DEEPSEEK_SEARCH_ENABLED_SELECTOR:-}
+    volumes: [browserdata:/data, slots:/slots]
+    networks: [browser_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    shm_size: 64m
+    mem_limit: 448m
+    memswap_limit: 1792m
+    cpus: 0.8
+    pids_limit: 192
+
+  indexer-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/indexer/Dockerfile}
+    environment:
+      <<: *worker-env
+      PARSER_MEMORY_MB: "256"
+    volumes: [slots:/slots]
+    networks: [indexer_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    read_only: true
+    tmpfs: ["/tmp:size=48m,noexec,nosuid"]
+    mem_limit: 160m
+    memswap_limit: 512m
+    cpus: 0.7
+    pids_limit: 48
+
+  screenshot-worker:
+    <<: *worker
+    build: {context: ., dockerfile: workers/browser/Screenshot.Dockerfile}
+    environment: *worker-env
+    volumes: [slots:/slots]
+    networks: [screenshot_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    read_only: true
+    tmpfs: ["/tmp:size=48m,nosuid"]
+    shm_size: 64m
+    mem_limit: 256m
+    memswap_limit: 1024m
+    cpus: 0.8
+    pids_limit: 128
+
+  sandbox-worker:
+    # Privileged trusted controller; its untrusted children get neither socket nor lock.
+    profiles: [sandbox]
+    build: {context: ., dockerfile: workers/sandbox/Dockerfile}
+    environment:
+      <<: *worker-env
+      SANDBOX_DATA_DIR: /sandbox-data
+      SANDBOX_HOST_DATA_DIR: ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}
+      SANDBOX_IMAGE: osa-python-runner:0.2
+      SANDBOX_MEMORY: 128m
+      SANDBOX_MEMORY_SWAP: 384m
+    volumes:
+      - slots:/slots
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${OSA_SANDBOX_HOST_DIR:-/tmp/osa-sandbox-jobs}:/sandbox-data
+    networks: [sandbox_net]
+    depends_on: {slots-init: {condition: service_completed_successfully}}
+    restart: unless-stopped
+    init: true
+    mem_limit: 96m
+    memswap_limit: 256m
+    pids_limit: 48
+    logging:
+      driver: local
+      options: {max-size: 5m, max-file: "2"}
+
+volumes:
+  appdata:
+  browserdata:
+  slots:
+networks:
+  edge: {}
+  browser_net: {}
+  screenshot_net: {}
+  indexer_net: {internal: true}
+  sandbox_net: {internal: true}

@@ -1,0 +1,31 @@
+历史 1 GB 配置说明：0.3.0 新模板默认 normal + PostgreSQL + work。
+新 4 核 8 GB 服务器请看 4核8G部署说明.txt。
+继续使用旧 1 GB 机器时，请明确选择 lowmem、保留原存储（新装可选 sqlite），按资源需要关闭 work/sandbox。
+不要为了换性能模式而直接改变 storage；数据库不会自动搬迁。
+
+1 核 / 1 GB Linux 部署（0.2.2 双模式）
+========================================
+配置 startup.ini：mode = lowmem（默认）；以后升级服务器可改 normal。
+project 保持 osa-lowmem，两种模式共用记忆、附件和 DeepSeek 登录资料。
+
+在项目目录执行：
+1. python3 scripts/init_env.py
+2. 编辑 .env，填真实 QQ、群白名单、聊天 API，并关闭演示模式。
+3. sudo bash scripts/setup_swap.sh
+   显式配置至少 4 GiB Swap；脚本只自动支持 ext4/xfs，已有同名文件不覆盖。
+4. python3 start.py check
+5. python3 start.py up
+
+后续切换模式只改 startup.ini，再执行 python3 start.py up。
+查看状态：python3 start.py status
+查看日志：python3 start.py logs
+停止保留数据：python3 start.py down
+Python / 插件：startup.ini 设置 sandbox = true，重新启动即可自动构建执行器。
+
+从自己电脑执行：ssh -L 8080:127.0.0.1:8080 用户名@服务器IP
+访问 http://127.0.0.1:8080/，使用 .env 中 OSA_ADMIN_TOKEN。
+DeepSeek 工作区可连接桌面手动扫码、过验证码；确认网页联网搜索已开启。
+低内存模式看完实时桌面后请断开，让浏览器空闲休眠，问答历史依然保留。
+
+QQ/NapCat 独立安装，占用也要算进总内存。真实 1 GB 峰值尚未压测，按项联调。
+更多内容见 docs/startup-modes.md、docs/low-memory.md。

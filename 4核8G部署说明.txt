@@ -1,0 +1,38 @@
+OpenSocialAgent 0.4.0 / Design V3
+================================
+适用：4 核 CPU / 8 GB RAM / 1 TB Linux，建议 x86_64。
+需要 Docker、Compose 2.20+、宿主机 Python 3.10+；容器自动安装 requirements.txt。
+
+新安装：
+1. python3 scripts/init_env.py
+2. 编辑 .env：机器人 QQ、授权群、真实聊天模型/API、关闭演示模式。
+3. startup.ini 默认如下：
+   mode = normal
+   sandbox = true
+   project = osa-lowmem
+   storage = postgres
+   work = true
+4. python3 start.py check
+5. python3 start.py up
+
+控制台默认服务器 127.0.0.1:8080，通过 SSH 转发在自己电脑打开。
+QQ 接入独立 NapCat；DeepSeek 工作区手动扫码和过验证。
+后台 AI 工作台创建/审批任务，或在授权群 @机器人 /工作 需求。
+用 /进度 任务ID 查询，不依赖模型猜测完成百分比。
+完成后后台查看测试证据、源码差异并下载成果。
+
+存储：Docker 命名卷实际位于 DockerRootDir，确认它在有空间的磁盘。
+1 TB 不会自动分区或自动被 Docker 使用，本程序不会格式化磁盘。
+备份：python3 start.py backup；停止保留数据：python3 start.py down。
+
+旧版用户保留原 .env、project 和 storage。未配置 storage 时仍使用 SQLite。
+SQLite 改 PostgreSQL 必须先验证迁移，本版不自动搬库。
+普通/低内存模式只管资源，不负责改变数据库类型。
+
+完整步骤：docs/server-4c8g.md。
+V2 实现与未完成验收：docs/v2-implementation.md、docs/verification.md。
+真实 Docker/QQ/DeepSeek 和服务器峰值尚未在本环境验证，首次请逐项联调。
+
+V3 新功能：Decision/Thinking/Reply 分离，Agent 运行配置与只读代码审查。
+startup.ini 增加 coding=builtin；改为 opencode 可启动可选的逐项目隔离网关。
+编程模型与 Observer 需分别配置，详见 docs/model-routing.md、docs/coding-provider.md。

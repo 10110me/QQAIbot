@@ -1,0 +1,49 @@
+# 默认：文本文件用 LF 存储，检出时自动转换
+* text=auto eol=lf
+
+# 明确按文本处理的文件
+*.py    text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.ini   text eol=lf
+*.toml  text eol=lf
+*.js    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.sh    text eol=lf
+Dockerfile        text eol=lf
+*.dockerfile      text eol=lf
+.gitignore        text eol=lf
+.gitattributes    text eol=lf
+
+# Windows 批处理必须用 CRLF，否则无法执行
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# 二进制文件，不做任何换行符转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.svg   text eol=lf
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tar   binary
+*.whl   binary
+*.so    binary
+*.dll   binary
+*.exe   binary
+*.db    binary
+*.sqlite binary
+*.sqlite3 binary
+*.faiss binary
+*.index binary
+
+# 避免语言统计把生成文件算进去
+docs/design-v*.md linguist-documentation
